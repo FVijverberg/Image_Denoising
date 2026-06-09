@@ -44,7 +44,7 @@ for image_id, clean_img in clean_images.items():
     for sigma in sigmas:
         noise_rng = np.random.default_rng( image_seed + sigma)
         noise = noise_rng.normal(loc=0.0,scale=sigma,size=clean_img.shape)
-        noisy = np.clip(clean_img + noise,0, 255) # z = clip(x + N(0, sigma²), 0, 255)
+        noisy = np.clip(clean_img + noise,0, 255) # z = clip(x + N(0, sigma^2), 0, 255)
         noisy_images[image_id][sigma] = noisy
 
 #check
@@ -122,3 +122,5 @@ plt.imshow(patch, cmap="grey")
 plt.title(f"Random patch index {idx}")
 plt.axis("off")
 plt.show()
+
+np.save("../Data/Y_patches.npy", Y)
