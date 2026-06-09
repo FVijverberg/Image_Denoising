@@ -109,7 +109,6 @@ while patch_idx < num_patches: # iterates until at 6000
 # check
 print("\n--- Sanity Check ---")
 
-# 1. Shape check
 print(f"Y shape: {Y.shape}")
 print(f"Min value: {Y.min():.2f}")
 print(f"Max value: {Y.max():.2f}")
@@ -123,4 +122,3 @@ plt.imshow(patch, cmap="grey")
 plt.title(f"Random patch index {idx}")
 plt.axis("off")
 plt.show()
-
