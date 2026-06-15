@@ -3,81 +3,60 @@ import matplotlib.pyplot as plt
 from sklearn.linear_model import orthogonal_mp
 
 
-# -----------------------------
-# Load patches
-# -----------------------------
-Y = np.load("../Data/Y_patches.npy")   # shape: (64, 6000)
+Y = np.load("../Data/Y_patches.npy")   # 64 x 6000 - from preprocessing.py
 
 n_features, n_samples = Y.shape
 n_atoms = 256
-sparsity = 6          # T0: max atoms used per patch
+epsilon=20
+#sparsity = 6          # T0: max atoms used per patch
 n_iter = 20
 seed = 0
-
 rng = np.random.default_rng(seed)
 
-# -----------------------------
-# Normalize / center patches
-# -----------------------------
 patch_means = np.mean(Y, axis=0, keepdims=True)
-Y_centered = Y - patch_means
+Y_centered = Y - patch_means# remove DC component
 
 
-# -----------------------------
-# Initialize dictionary D
-# pick random training patches as initial atoms
-# -----------------------------
-indices = rng.choice(n_samples, size=n_atoms, replace=False)
-D = Y_centered[:, indices].copy()
 
-D_norms = np.linalg.norm(D, axis=0, keepdims=True) + 1e-12
-D = D / D_norms
+# Initialize dictionary
+indices = rng.choice(n_samples, size=n_atoms, replace=False) 
+D = Y_centered[:, indices].copy() # pick random training patches as initial atoms
+
+D /= np.linalg.norm(D, axis=0, keepdims=True) + 1e-12
 
 
-# -----------------------------
-# K-SVD
-# -----------------------------
+# K-SVD with residual-threshold OMP
 for it in range(n_iter):
     print(f"\nK-SVD iteration {it + 1}/{n_iter}")
 
-    # Step 1: Sparse coding using OMP
-    # Solves: Y_centered ≈ D @ X
-    X = orthogonal_mp(D, Y_centered, n_nonzero_coefs=sparsity)
+    X = orthogonal_mp(D, Y_centered, tol=epsilon**2, precompute=True) # OMP sparse coding step
 
-    # Step 2: Dictionary update
+    # dict update step
     for k in range(n_atoms):
 
-        # Find patches that use atom k
         omega = np.nonzero(X[k, :])[0]
 
-        # If no patch uses this atom, reinitialize it
-        if len(omega) == 0:
+        if len(omega) == 0: # dead patch removal
             random_patch = rng.integers(n_samples)
             D[:, k] = Y_centered[:, random_patch]
             D[:, k] /= np.linalg.norm(D[:, k]) + 1e-12
             continue
 
-        # Remove contribution of atom k
-        X_k = X[k, omega].copy()
-        X[k, omega] = 0
+        X[k, omega] = 0 # temporarily remove atom k's contribution to error
 
-        # Error restricted to patches using atom k
         E_k = Y_centered[:, omega] - D @ X[:, omega]
 
-        # Rank-1 SVD update
         U, S, Vt = np.linalg.svd(E_k, full_matrices=False)
 
-        # Update atom
         D[:, k] = U[:, 0]
-
-        # Update coefficients for atom k
         X[k, omega] = S[0] * Vt[0, :]
 
-    # Reconstruction error after this iteration
-    Y_hat = D @ X
-    mse = np.mean((Y_centered - Y_hat) ** 2)
-    print(f"Reconstruction MSE: {mse:.4f}")
+    Y_hat_centered = D @ X
+    mse = np.mean((Y_centered - Y_hat_centered) ** 2)
+    avg_residual = np.mean(np.linalg.norm(Y_centered - Y_hat_centered, axis=0))
 
+    print(f"Reconstruction MSE: {mse:.4f}")
+    print(f"Average residual norm: {avg_residual:.4f}")
 
 # Save results
 np.save("../Data/dictionary_D.npy", D)

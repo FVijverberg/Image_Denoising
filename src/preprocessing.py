@@ -24,8 +24,7 @@ print("Selected test images:")
 for f in selected_files:
     print(f.name)
 
-# Load clean images
-clean_images = {}
+clean_images = {} # Load clean images
 
 for file in selected_files:
     rgb = io.imread(file)
@@ -33,7 +32,7 @@ for file in selected_files:
 
     clean_images[file.stem] = grey
 
-# Add  noise
+#add  noise
 noisy_images = {}
 for image_id, clean_img in clean_images.items():
 
@@ -42,24 +41,22 @@ for image_id, clean_img in clean_images.items():
     image_seed =int.from_bytes(image_id.encode(), "little") % (2**32)     # fixed per-image seed
 
     for sigma in sigmas:
-        noise_rng = np.random.default_rng( image_seed + sigma)
+        noise_rng = np.random.default_rng(image_seed*1000 + sigma)
         noise = noise_rng.normal(loc=0.0,scale=sigma,size=clean_img.shape)
         noisy = np.clip(clean_img + noise,0, 255) # z = clip(x + N(0, sigma^2), 0, 255)
         noisy_images[image_id][sigma] = noisy
 
 #check
 example_id = list(clean_images.keys())[0]
-
 fig, axes = plt.subplots(1, 5, figsize=(16, 4))
-
-axes[0].imshow(clean_images[example_id], cmap="grey")
+axes[0].imshow(clean_images[example_id], cmap="gray")
 axes[0].set_title("Clean")
 axes[0].axis("off")
 
 for idx, sigma in enumerate(sigmas):
     axes[idx + 1].imshow(
         noisy_images[example_id][sigma],
-        cmap="grey"
+        cmap="gray"
     )
     axes[idx + 1].set_title(f"σ={sigma}")
     axes[idx + 1].axis("off")
@@ -97,8 +94,8 @@ while patch_idx < num_patches: # iterates until at 6000
     h, w = img.shape
 
     # random crop location
-    x = rng.integers(0, h - patch_size)
-    y = rng.integers(0, w - patch_size)
+    x = rng.integers(0, h - patch_size+1)
+    y = rng.integers(0, w - patch_size+1)
 
     patch = img[x:x+patch_size, y:y+patch_size]
 
@@ -118,7 +115,7 @@ print(f"Zero patches: {zero_patches}")
 idx = rng.integers(0, num_patches)
 patch = Y[:, idx].reshape(patch_size, patch_size)
 
-plt.imshow(patch, cmap="grey")
+plt.imshow(patch, cmap="gray")
 plt.title(f"Random patch index {idx}")
 plt.axis("off")
 plt.show()
