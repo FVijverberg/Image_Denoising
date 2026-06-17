@@ -12,14 +12,14 @@ def e_step(D, gamma, Y, sigma2, chunk=256):
     DtY = D.T @ Y # Precompute
 
     M = np.zeros((N, K)) # for posterior mean
-    diag_Sig = np.zeros((N, K)) # post cov. per patch
+    diag_Sig = np.zeros((N, K)) # posterior cov. per patch
     Sigma_sum = np.zeros((N, N))# accumulate cov sum for dictionary update
 
     for s in range(0, K, chunk):
         g = gamma[:, s:s + chunk]# get chunk
         DG = D[None] * g.T[:, None, :]  #add batch dimension and reshape gamma -  is effectively A * diag(gamma_k) for each patch in the batch simultaneously
-        Phi = np.linalg.inv(sigma2 * I + DG @ D.T)# (b, m, m)
-        Sigma = (g.T[:, :, None] * np.eye(N) #posterior cov.
+        Phi = np.linalg.inv(sigma2 * I + DG @ D.T)# compute PHI (b, m, m)
+        Sigma = (g.T[:, :, None] * np.eye(N) # compuet sigame - posterior cov.
                  - np.swapaxes(DG, 1, 2) @ Phi @ DG) # transpose last two dims for matrix multiply
         v = DtY[:, s:s + chunk].T[:, :, None] # b x N x 1
         mu = (Sigma @ v)[:, :, 0] / sigma2  # post. mean (bxN)

@@ -1,5 +1,5 @@
-Literature/dictionary_learning_literature_survey.md
-Literature/image_denoising_project_guide.md
-Literature/image_denoising_project_guide.pdf
-Literature/dictionary_learning_literature_survey.pdf
-Data/*
+Literature
+Data/denoised_results
+Data/images
+Data/*.txt
+Backup
