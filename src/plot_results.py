@@ -1,152 +1,170 @@
+# plot_results.py
+
+import numpy as np
 import pandas as pd
 import matplotlib.pyplot as plt
-import numpy as np
+import utils
 
-# -----------------------------
-# Load metrics
-# -----------------------------
-df = pd.read_csv("../Data/denoised_results/metrics.csv")
+omp_df = pd.read_csv(utils.OUTPUT_DIR / "metrics_omp.csv")
+sbl_df = pd.read_csv(utils.OUTPUT_DIR / "metrics_dlsbl.csv")
 
-# Noise variance
-df["variance"] = df["sigma"]**2
+omp = omp_df.groupby("sigma").mean(numeric_only=True).reset_index()
+sbl = sbl_df.groupby("sigma").mean(numeric_only=True).reset_index()
 
-# -----------------------------
-# Average over the 3 images
-# -----------------------------
-summary = df.groupby("variance").agg({
-    "noisy_psnr":"mean",
-    "denoised_psnr":"mean",
-    "noisy_mse":"mean",
-    "denoised_mse":"mean",
-    "avg_atoms":"mean"
-}).reset_index()
+print("\nOMP Summary")
+print(omp)
 
-print(summary)
+print("\nDL-SBL Summary")
+print(sbl)
 
-# -----------------------------
-# Plot 1: PSNR vs Noise Variance
-# -----------------------------
-plt.figure(figsize=(7,5))
+plt.figure(figsize=(6,4))
 
 plt.plot(
-    summary["variance"],
-    summary["noisy_psnr"],
-    marker='o',
+    omp["sigma"],
+    omp["noisy_psnr"],
+    "k--o",
     linewidth=2,
     label="Noisy"
 )
 
 plt.plot(
-    summary["variance"],
-    summary["denoised_psnr"],
-    marker='s',
+    omp["sigma"],
+    omp["denoised_psnr"],
+    "o-",
     linewidth=2,
-    label="Denoised"
+    label="K-SVD/OMP"
 )
 
-plt.xlabel("Noise Variance ($\\sigma^2$)")
+plt.plot(
+    sbl["sigma"],
+    sbl["denoised_psnr"],
+    "s-",
+    linewidth=2,
+    label="DL-SBL"
+)
+
+plt.xlabel("Noise level σ")
 plt.ylabel("PSNR (dB)")
-plt.title("PSNR vs Noise Variance")
+plt.title("PSNR vs Noise Level")
 plt.grid(True)
 plt.legend()
 
+plt.tight_layout()
 plt.savefig(
-    "../Data/denoised_results/PSNR_vs_variance.png",
+    utils.OUTPUT_DIR / "psnr_comparison.png",
     dpi=300,
     bbox_inches="tight"
 )
 
-plt.show()
-
-# -----------------------------
-# Plot 2: MSE vs Noise Variance
-# -----------------------------
-plt.figure(figsize=(7,5))
+plt.figure(figsize=(6,4))
 
 plt.plot(
-    summary["variance"],
-    summary["noisy_mse"],
-    marker='o',
+    omp["sigma"],
+    omp["noisy_mse"],
+    "k--o",
     linewidth=2,
     label="Noisy"
 )
 
 plt.plot(
-    summary["variance"],
-    summary["denoised_mse"],
-    marker='s',
+    omp["sigma"],
+    omp["denoised_mse"],
+    "o-",
     linewidth=2,
-    label="Denoised"
+    label="K-SVD/OMP"
 )
 
-plt.xlabel("Noise Variance ($\\sigma^2$)")
+plt.plot(
+    sbl["sigma"],
+    sbl["denoised_mse"],
+    "s-",
+    linewidth=2,
+    label="DL-SBL"
+)
+
+plt.xlabel("Noise level σ")
 plt.ylabel("MSE")
-plt.title("MSE vs Noise Variance")
+plt.title("MSE vs Noise Level")
 plt.grid(True)
 plt.legend()
 
+plt.tight_layout()
 plt.savefig(
-    "../Data/denoised_results/MSE_vs_variance.png",
+    utils.OUTPUT_DIR / "mse_comparison.png",
     dpi=300,
     bbox_inches="tight"
 )
 
-plt.show()
+omp_gain = omp["denoised_psnr"] - omp["noisy_psnr"]
+sbl_gain = sbl["denoised_psnr"] - sbl["noisy_psnr"]
 
-# -----------------------------
-# Plot 3: Average atoms used
-# -----------------------------
-plt.figure(figsize=(7,5))
+x = np.arange(len(omp["sigma"]))
+width = 0.35
 
-plt.plot(
-    summary["variance"],
-    summary["avg_atoms"],
-    marker='o',
-    linewidth=2,
-    color='darkred'
-)
-
-plt.xlabel("Noise Variance ($\\sigma^2$)")
-plt.ylabel("Average Atoms Selected")
-plt.title("Average OMP Atoms vs Noise Variance")
-plt.grid(True)
-
-plt.savefig(
-    "../Data/denoised_results/Atoms_vs_variance.png",
-    dpi=300,
-    bbox_inches="tight"
-)
-
-plt.show()
-
-# -----------------------------
-# Plot 4: PSNR Improvement
-# -----------------------------
-summary["improvement"] = (
-    summary["denoised_psnr"]
-    - summary["noisy_psnr"]
-)
-
-plt.figure(figsize=(7,5))
+plt.figure(figsize=(6,4))
 
 plt.bar(
-    summary["variance"].astype(str),
-    summary["improvement"],
-    color="steelblue"
+    x - width/2,
+    omp_gain,
+    width,
+    label="K-SVD/OMP"
 )
 
-plt.xlabel("Noise Variance ($\\sigma^2$)")
-plt.ylabel("PSNR Improvement (dB)")
-plt.title("PSNR Gain after Denoising")
+plt.bar(
+    x + width/2,
+    sbl_gain,
+    width,
+    label="DL-SBL"
+)
 
-plt.grid(axis='y')
+plt.xticks(x, omp["sigma"])
 
+plt.xlabel("Noise level σ")
+plt.ylabel("PSNR gain (dB)")
+plt.title("PSNR Improvement")
+plt.grid(axis="y")
+plt.legend()
+
+plt.tight_layout()
 plt.savefig(
-    "../Data/denoised_results/PSNR_improvement.png",
+    utils.OUTPUT_DIR / "psnr_gain_comparison.png",
+    dpi=300,
+    bbox_inches="tight"
+)
+
+# --------------------------------------------------
+# Figure 4: Sparsity Comparison
+# --------------------------------------------------
+
+plt.figure(figsize=(6,4))
+
+plt.plot(
+    omp["sigma"],
+    omp["avg_atoms"],
+    "o-",
+    linewidth=2,
+    label="K-SVD/OMP"
+)
+
+plt.plot(
+    sbl["sigma"],
+    sbl["avg_atoms"],
+    "s-",
+    linewidth=2,
+    label="DL-SBL"
+)
+
+plt.xlabel("Noise level σ")
+plt.ylabel("Average active atoms")
+plt.title("Sparsity Comparison")
+plt.grid(True)
+plt.legend()
+
+plt.tight_layout()
+plt.savefig(
+    utils.OUTPUT_DIR / "sparsity_comparison.png",
     dpi=300,
     bbox_inches="tight"
 )
 
 plt.show()
-
-print("\nPlots saved successfully!")
